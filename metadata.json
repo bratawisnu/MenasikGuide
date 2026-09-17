@@ -1,0 +1,6 @@
+{
+  "name": "Manasik Pintar - CMS & Presentasi Interaktif Haji & Umroh",
+  "description": "Aplikasi CMS dan media presentasi interaktif manasik haji dan umroh lengkap dengan doa, urutan rukun, tips praktis lansia, dan pelacak progres belajar jamaah.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
