@@ -411,7 +411,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!matchedUser) {
         return {
           success: false,
-          message: 'Email belum terdaftar. Silakan daftar akun baru atau gunakan salah satu Akun Demo Cepat di bawah.'
+          message: 'Email belum terdaftar. Silakan periksa kembali email Anda atau lakukan pendaftaran akun baru.'
         };
       }
 
@@ -498,12 +498,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = userData.email.trim().toLowerCase();
 
     try {
+      const selectedRole = userData.role === 'admin' ? 'admin' : 'jamaah';
       // Try server first
       try {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...userData, email: cleanEmail })
+          body: JSON.stringify({ ...userData, email: cleanEmail, role: selectedRole })
         });
         const contentType = res.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -531,12 +532,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: userData.name.trim(),
         email: cleanEmail,
         password: userData.password,
-        role: userData.role || 'jamaah',
+        role: selectedRole,
         status: 'pending', // all public registrations require super admin approval
         phone: userData.phone,
         kloterOrAgency: userData.kloterOrAgency,
         createdAt: new Date().toISOString(),
-        notes: 'Pendaftaran mandiri (menunggu approval Super Admin)'
+        notes: `Pendaftaran mandiri sebagai ${selectedRole === 'admin' ? 'Pembimbing' : 'Jamaah'} (menunggu approval Super Admin)`
       };
 
       const updatedUsers = [newUser, ...localUsers];
