@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   ManasikStep,
   ManasikCategory,
@@ -7,9 +7,11 @@ import {
   UserProgressItem,
   MasteryStatus,
   LearningNotification,
-  VisitorStatsData
+  VisitorStatsData,
+  CurriculumInfo
 } from '../types';
 import { DEFAULT_MANASIK_STEPS } from '../data/defaultManasikData';
+import { useAuth } from './AuthContext';
 
 interface ManasikContextType {
   steps: ManasikStep[];
@@ -41,6 +43,11 @@ interface ManasikContextType {
   visitorStats: VisitorStatsData;
   refreshVisitorStats: () => Promise<void>;
   resetVisitorStats: () => Promise<void>;
+  // Multi-Admin Curriculum Management
+  activeCurriculumId: string;
+  activeCurriculumInfo: CurriculumInfo;
+  availableCurricula: CurriculumInfo[];
+  switchCurriculum: (curriculumId: string) => void;
   // CMS Methods
   addStep: (step: Omit<ManasikStep, 'id'>) => void;
   updateStep: (step: ManasikStep) => void;
@@ -52,10 +59,44 @@ interface ManasikContextType {
 }
 
 const STORAGE_KEY_STEPS = 'manasik_steps_v1';
+const STORAGE_PREFIX_CURRICULUM = 'manasik_curriculum_v2_';
 const STORAGE_KEY_PROGRESS = 'manasik_progress_v1';
 const STORAGE_KEY_THEME = 'manasik_theme_v1';
 const STORAGE_KEY_A11Y = 'manasik_a11y_v1';
 const STORAGE_KEY_NOTIFS = 'manasik_notifs_v1';
+
+function getStoredCurriculumSteps(id: string): ManasikStep[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_PREFIX_CURRICULUM + id);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // fallback
+  }
+  // Check if legacy storage exists for default
+  if (id === 'default') {
+    try {
+      const legacy = localStorage.getItem(STORAGE_KEY_STEPS);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+  }
+  return DEFAULT_MANASIK_STEPS;
+}
+
+function saveStoredCurriculumSteps(id: string, steps: ManasikStep[]): void {
+  try {
+    localStorage.setItem(STORAGE_PREFIX_CURRICULUM + id, JSON.stringify(steps));
+  } catch {
+    // ignore
+  }
+}
 
 const INITIAL_NOTIFICATIONS: LearningNotification[] = [
   {
@@ -79,18 +120,26 @@ const INITIAL_NOTIFICATIONS: LearningNotification[] = [
 const ManasikContext = createContext<ManasikContextType | undefined>(undefined);
 
 export const ManasikProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load steps
-  const [steps, setSteps] = useState<ManasikStep[]>(() => {
+  const { currentUser, users } = useAuth();
+
+  const [activeCurriculumId, setActiveCurriculumId] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_STEPS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const savedUser = localStorage.getItem('manasik_auth_user_v1');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && (parsed.role === 'admin' || parsed.role === 'super_admin')) {
+          return parsed.id;
+        }
       }
     } catch {
-      // fallback
+      // ignore
     }
-    return DEFAULT_MANASIK_STEPS;
+    return 'default';
+  });
+
+  // Load steps for initial active curriculum
+  const [steps, setSteps] = useState<ManasikStep[]>(() => {
+    return getStoredCurriculumSteps(activeCurriculumId);
   });
 
   const [activeCategory, setActiveCategory] = useState<ManasikCategory>('umroh');
@@ -98,6 +147,39 @@ export const ManasikProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const firstUmroh = DEFAULT_MANASIK_STEPS.find(s => s.category === 'umroh');
     return firstUmroh ? firstUmroh.id : DEFAULT_MANASIK_STEPS[0].id;
   });
+
+  // Auto-switch to Admin's own curriculum when an Admin/SuperAdmin logs in
+  useEffect(() => {
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
+      setActiveCurriculumId(currentUser.id);
+      const loaded = getStoredCurriculumSteps(currentUser.id);
+      setSteps(loaded);
+      const firstStep = loaded.find(s => s.category === activeCategory) || loaded[0];
+      if (firstStep) {
+        setSelectedStepId(firstStep.id);
+      }
+    } else if (!currentUser) {
+      setActiveCurriculumId('default');
+      const loaded = getStoredCurriculumSteps('default');
+      setSteps(loaded);
+      const firstStep = loaded.find(s => s.category === activeCategory) || loaded[0];
+      if (firstStep) {
+        setSelectedStepId(firstStep.id);
+      }
+    }
+  }, [currentUser?.id, currentUser?.role]);
+
+  // Sync steps to local storage for the active curriculum
+  useEffect(() => {
+    saveStoredCurriculumSteps(activeCurriculumId, steps);
+    if (activeCurriculumId === 'default') {
+      try {
+        localStorage.setItem(STORAGE_KEY_STEPS, JSON.stringify(steps));
+      } catch {
+        // ignore
+      }
+    }
+  }, [steps, activeCurriculumId]);
 
   // User Progress
   const [userProgress, setUserProgress] = useState<Record<string, UserProgressItem>>(() => {
@@ -382,6 +464,73 @@ export const ManasikProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
+  // Curricula management
+  const availableCurricula = useMemo<CurriculumInfo[]>(() => {
+    const list: CurriculumInfo[] = [
+      {
+        id: 'default',
+        title: 'Standar Kemenag & Haramain RI',
+        authorName: 'Kementerian Agama RI',
+        agency: 'Pusat Manajemen Manasik RI',
+        role: 'system',
+        stepsCount: getStoredCurriculumSteps('default').length
+      }
+    ];
+
+    const adminUsers = users.filter(
+      u => (u.role === 'admin' || u.role === 'super_admin') && u.status === 'approved'
+    );
+
+    adminUsers.forEach(admin => {
+      const adminSteps = getStoredCurriculumSteps(admin.id);
+      const cleanAuthorName = admin.name.replace(/\s*\(Super Admin\)/gi, '').trim();
+      const cleanAgency = (admin.kloterOrAgency || (admin.role === 'super_admin' ? 'Pusat Manajemen Manasik RI' : 'Admin Pembimbing'))
+        .replace(/\s*\(Super Admin\)/gi, '')
+        .replace(/\bSuper Admin RI\b/gi, 'Pusat Manajemen Manasik RI')
+        .trim();
+
+      list.push({
+        id: admin.id,
+        title: admin.role === 'super_admin' ? `Kurikulum Master (${cleanAuthorName})` : `Kurikulum Bimbingan ${cleanAuthorName}`,
+        authorName: cleanAuthorName,
+        agency: cleanAgency,
+        role: admin.role,
+        stepsCount: adminSteps.length
+      });
+    });
+
+    return list;
+  }, [users]);
+
+  const activeCurriculumInfo = useMemo<CurriculumInfo>(() => {
+    const found = availableCurricula.find(c => c.id === activeCurriculumId);
+    if (found) return found;
+    const authorName = (currentUser?.name || 'Pembimbing Manasik').replace(/\s*\(Super Admin\)/gi, '').trim();
+    const agency = (currentUser?.kloterOrAgency || 'Pusat Manajemen Manasik RI')
+      .replace(/\s*\(Super Admin\)/gi, '')
+      .replace(/\bSuper Admin RI\b/gi, 'Pusat Manajemen Manasik RI')
+      .trim();
+
+    return {
+      id: activeCurriculumId,
+      title: activeCurriculumId === 'default' ? 'Standar Kemenag & Haramain RI' : 'Kurikulum Kustom',
+      authorName,
+      agency,
+      role: (currentUser?.role as any) || 'admin',
+      stepsCount: steps.length
+    };
+  }, [availableCurricula, activeCurriculumId, currentUser, steps.length]);
+
+  const switchCurriculum = useCallback((curriculumId: string) => {
+    setActiveCurriculumId(curriculumId);
+    const loaded = getStoredCurriculumSteps(curriculumId);
+    setSteps(loaded);
+    const firstStep = loaded.find(s => s.category === activeCategory) || loaded[0];
+    if (firstStep) {
+      setSelectedStepId(firstStep.id);
+    }
+  }, [activeCategory]);
+
   // Visitor counting state
   const [visitorStats, setVisitorStats] = useState<VisitorStatsData>(() => {
     try {
@@ -540,6 +689,10 @@ export const ManasikProvider: React.FC<{ children: React.ReactNode }> = ({ child
         visitorStats,
         refreshVisitorStats,
         resetVisitorStats,
+        activeCurriculumId,
+        activeCurriculumInfo,
+        availableCurricula,
+        switchCurriculum,
         addStep,
         updateStep,
         deleteStep,

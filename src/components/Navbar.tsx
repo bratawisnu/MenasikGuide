@@ -378,16 +378,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
                               <span>Status Belajar Saya</span>
                             </button>
 
-                            <button
-                              onClick={() => {
-                                setCurrentView('cms');
-                                setShowUserDropdown(false);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
-                            >
-                              <Settings className="w-3.5 h-3.5 text-stone-400" />
-                              <span>CMS Konten</span>
-                            </button>
+                            {/* CMS Konten hanya untuk role Admin & Super Admin */}
+                            {isAdmin && (
+                              <button
+                                onClick={() => {
+                                  setCurrentView('cms');
+                                  setShowUserDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
+                              >
+                                <Settings className="w-3.5 h-3.5 text-stone-400" />
+                                <span>CMS Konten</span>
+                              </button>
+                            )}
                           </div>
 
                           <div className="pt-2 border-t border-stone-100 dark:border-stone-800">

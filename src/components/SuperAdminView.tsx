@@ -690,8 +690,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onBackToGuide })
             >
               <option value="all">Semua Peran (Role)</option>
               <option value="super_admin">👑 Super Admin</option>
-              <option value="admin">👳 Pembimbing (Admin)</option>
-              <option value="jamaah">🧕 Jamaah Haji / Umroh</option>
+              <option value="admin">👳 Admin</option>
+              <option value="jamaah">🧕 Jamaah</option>
             </select>
 
             {(searchTerm || statusFilter !== 'all' || roleFilter !== 'all') && (
@@ -824,7 +824,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onBackToGuide })
                               } disabled:opacity-75 disabled:cursor-not-allowed`}
                             >
                               <option value="super_admin">👑 Super Admin</option>
-                              <option value="admin">👳 Pembimbing (Admin)</option>
+                              <option value="admin">👳 Admin</option>
                               <option value="jamaah">🧕 Jamaah</option>
                             </select>
                           </div>
@@ -1197,9 +1197,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onBackToGuide })
                     onChange={e => setNewUserData({ ...newUserData, role: e.target.value as UserRole })}
                     className="w-full p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 dark:bg-stone-800 text-xs font-bold focus:ring-2 focus:ring-emerald-600"
                   >
-                    <option value="jamaah">🧕 Jamaah Haji / Umroh</option>
-                    <option value="admin">👳 Pembimbing (Admin)</option>
                     <option value="super_admin">👑 Super Admin</option>
+                    <option value="admin">👳 Admin</option>
+                    <option value="jamaah">🧕 Jamaah</option>
                   </select>
                 </div>
 
@@ -1351,9 +1351,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onBackToGuide })
                     onChange={e => setEditUserData({ ...editUserData, role: e.target.value as UserRole })}
                     className="w-full p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 dark:bg-stone-800 text-xs font-bold focus:ring-2 focus:ring-emerald-600"
                   >
-                    <option value="jamaah">🧕 Jamaah</option>
-                    <option value="admin">👳 Pembimbing</option>
                     <option value="super_admin">👑 Super Admin</option>
+                    <option value="admin">👳 Admin</option>
+                    <option value="jamaah">🧕 Jamaah</option>
                   </select>
                 </div>
               </div>

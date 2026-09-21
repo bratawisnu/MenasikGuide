@@ -4,12 +4,58 @@ import { getThemeClasses } from '../utils/themeStyles';
 import { Check, CheckCircle2, Clock, CircleAlert, Sparkles } from 'lucide-react';
 
 export const StepTimeline: React.FC = () => {
-  const { filteredSteps, selectedStepId, setSelectedStepId, userProgress, theme, activeCategory } = useManasik();
+  const {
+    filteredSteps,
+    selectedStepId,
+    setSelectedStepId,
+    userProgress,
+    theme,
+    activeCategory,
+    activeCurriculumId,
+    activeCurriculumInfo,
+    availableCurricula,
+    switchCurriculum
+  } = useManasik();
   const themeClasses = getThemeClasses(theme);
 
   return (
     <aside className="w-full lg:w-80 shrink-0">
       <div className="bg-white dark:bg-stone-900 rounded-3xl p-5 sticky top-28 border border-stone-200/80 dark:border-stone-800 shadow-xs">
+        {/* Pembimbing / Kurikulum Selector */}
+        {availableCurricula.length > 1 && (
+          <div className="mb-4 p-3 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                <span>📖 Materi Pembimbing</span>
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+                Jamaah
+              </span>
+            </div>
+            <select
+              value={activeCurriculumId}
+              onChange={e => switchCurriculum(e.target.value)}
+              className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-600 text-stone-800 dark:text-stone-200 cursor-pointer shadow-2xs focus:ring-2 focus:ring-emerald-500"
+            >
+              {availableCurricula.map(c => {
+                const cleanAuthor = (c.authorName || '')
+                  .replace(/\s*\(Super Admin\)/gi, '')
+                  .trim();
+                const cleanAgency = (c.agency || 'Kemenag RI')
+                  .replace(/\s*\(Super Admin\)/gi, '')
+                  .replace(/\bSuper Admin RI\b/gi, 'Pusat Manajemen Manasik RI')
+                  .trim();
+
+                return (
+                  <option key={c.id} value={c.id}>
+                    {cleanAuthor} ({cleanAgency})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-stone-100 dark:border-stone-800">
           <div>
             <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 text-stone-900 dark:text-stone-100">

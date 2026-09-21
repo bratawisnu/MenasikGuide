@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useManasik } from '../context/ManasikContext';
+import { useAuth } from '../context/AuthContext';
 import { getThemeClasses } from '../utils/themeStyles';
 import { ManasikStep, StepType, ManasikCategory, PrayerItem } from '../types';
 import {
@@ -24,9 +25,14 @@ import {
 } from 'lucide-react';
 
 export const CmsManager: React.FC = () => {
+  const { currentUser, isAdmin, isSuperAdmin } = useAuth();
   const {
     steps,
     activeCategory,
+    activeCurriculumId,
+    activeCurriculumInfo,
+    availableCurricula,
+    switchCurriculum,
     addStep,
     updateStep,
     deleteStep,
@@ -301,6 +307,53 @@ export const CmsManager: React.FC = () => {
 
       {/* Header & Controls Bar */}
       <section className={`${themeClasses.cardBg} rounded-3xl p-6 sm:p-8 border shadow-sm`}>
+        {/* Multi-Admin Curriculum Info & Switcher */}
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-700 text-white flex items-center justify-center shrink-0 text-xl font-bold shadow-xs">
+              {currentUser?.role === 'super_admin' ? '👑' : '👳'}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                  {currentUser?.role === 'super_admin' ? 'Portal Super Admin' : 'Admin CMS Mandiri'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100">
+                  {activeCurriculumInfo.title}
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+                Pengelola: <strong>{activeCurriculumInfo.authorName}</strong> ({activeCurriculumInfo.agency || 'KBIHU / Travel'})
+                {currentUser?.role === 'admin' && ' • Seluruh perubahan tersimpan otomatis ke kurikulum mandiri Anda.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Super Admin can switch which Admin's curriculum they are inspecting/managing */}
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2 shrink-0 bg-white dark:bg-stone-900 p-2 rounded-xl border border-stone-200 dark:border-stone-800">
+              <span className="text-xs font-bold text-stone-600 dark:text-stone-400 whitespace-nowrap">
+                Kelola Kurikulum:
+              </span>
+              <select
+                value={activeCurriculumId}
+                onChange={e => switchCurriculum(e.target.value)}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 cursor-pointer focus:ring-2 focus:ring-emerald-500"
+              >
+                {availableCurricula.map(c => {
+                  const cleanTitle = c.title.replace(/\s*\(Super Admin\)/gi, '').trim();
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.role === 'system' ? '🏛️ ' : c.role === 'super_admin' ? '👑 ' : '👳 '}
+                      {cleanTitle} ({c.stepsCount} materi)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-stone-200 dark:border-stone-800">
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-stone-100 flex items-center gap-2">

@@ -108,3 +108,13 @@ export interface UserAuditLog {
   details?: string;
   timestamp: string;
 }
+
+export interface CurriculumInfo {
+  id: string; // 'default' | userId
+  title: string;
+  authorName: string;
+  agency?: string;
+  role: UserRole | 'system';
+  stepsCount: number;
+  lastUpdated?: string;
+}

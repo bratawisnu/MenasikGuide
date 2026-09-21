@@ -40,7 +40,7 @@ interface StoredUserWithPassword extends AppUser {
 const SEED_USERS: StoredUserWithPassword[] = [
   {
     id: 'user-superadmin-yusuf',
-    name: 'Yusuf Wisnubrata (Super Admin)',
+    name: 'Yusuf Wisnubrata',
     email: 'yusufwisnubrata26@gmail.com',
     password: 'admin123',
     role: 'super_admin',
@@ -53,7 +53,7 @@ const SEED_USERS: StoredUserWithPassword[] = [
   },
   {
     id: 'user-superadmin-1',
-    name: 'KH. Abdullah Syukri (Super Admin)',
+    name: 'KH. Abdullah Syukri',
     email: 'superadmin@manasik.id',
     password: 'admin123',
     role: 'super_admin',
@@ -134,7 +134,7 @@ const SEED_LOGS: UserAuditLog[] = [
     action: 'APPROVAL_GRANTED',
     targetUserId: 'user-jamaah-1',
     targetUserName: 'Hj. Siti Aminah',
-    performedBy: 'Yusuf Wisnubrata (Super Admin)',
+    performedBy: 'Yusuf Wisnubrata',
     details: 'Pendaftaran disetujui, akun jamaah aktif.',
     timestamp: '2026-09-09T08:00:00.000Z'
   },
@@ -143,7 +143,7 @@ const SEED_LOGS: UserAuditLog[] = [
     action: 'ACCOUNT_SUSPENDED',
     targetUserId: 'user-suspended-1',
     targetUserName: 'Farhan Maulana',
-    performedBy: 'Yusuf Wisnubrata (Super Admin)',
+    performedBy: 'Yusuf Wisnubrata',
     details: 'Alasan: Pemeriksaan validasi dokumen paspor bermasalah.',
     timestamp: '2026-09-12T14:30:00.000Z'
   }
@@ -155,10 +155,21 @@ function getStoredLocalUsers(): StoredUserWithPassword[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Clean any lingering (Super Admin) labels from user names
+        let modified = false;
+        parsed.forEach((u: StoredUserWithPassword) => {
+          if (u.name && u.name.includes('(Super Admin)')) {
+            u.name = u.name.replace(/\s*\(Super Admin\)/gi, '').trim();
+            modified = true;
+          }
+        });
         // Ensure Yusuf Wisnubrata and superadmin are present
         const hasYusuf = parsed.some((u: StoredUserWithPassword) => u.email?.toLowerCase() === 'yusufwisnubrata26@gmail.com');
         if (!hasYusuf) {
           parsed.unshift(SEED_USERS[0]);
+          modified = true;
+        }
+        if (modified) {
           saveStoredLocalUsers(parsed);
         }
         return parsed;
@@ -213,7 +224,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_AUTH_USER);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name && parsed.name.includes('(Super Admin)')) {
+          parsed.name = parsed.name.replace(/\s*\(Super Admin\)/gi, '').trim();
+          try {
+            localStorage.setItem(STORAGE_KEY_AUTH_USER, JSON.stringify(parsed));
+          } catch {
+            // ignore
+          }
+        }
+        return parsed;
+      }
     } catch {
       // fallback
     }
@@ -371,7 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!matchedUser && cleanEmail === 'yusufwisnubrata26@gmail.com') {
         matchedUser = {
           id: 'user-superadmin-yusuf',
-          name: 'Yusuf Wisnubrata (Super Admin)',
+          name: 'Yusuf Wisnubrata',
           email: 'yusufwisnubrata26@gmail.com',
           password: 'admin123',
           role: 'super_admin',
