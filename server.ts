@@ -1,46 +1,23 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import bcrypt from 'bcryptjs';
+import {
+  fetchUsers,
+  upsertUsers,
+  deleteUserById,
+  fetchAuditLogs,
+  insertAuditLog,
+  insertAuditLogs,
+  fetchStats,
+  upsertStats,
+  type ServerUser,
+  type UserAuditLog,
+  type VisitorStats,
+} from './db';
 
-interface VisitorStats {
-  totalVisits: number;
-  uniqueVisitorIds: string[];
-  todayDate: string;
-  todayVisits: number;
-  lastUpdated: string;
-}
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const STATS_FILE = path.join(DATA_DIR, 'visitor-stats.json');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const LOGS_FILE = path.join(DATA_DIR, 'user-audit-logs.json');
-
-// User Types for Server
-interface ServerUser {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: 'super_admin' | 'admin' | 'jamaah';
-  status: 'approved' | 'pending' | 'suspended' | 'rejected';
-  phone?: string;
-  kloterOrAgency?: string;
-  createdAt: string;
-  lastLogin?: string;
-  suspendReason?: string;
-  notes?: string;
-}
-
-interface UserAuditLog {
-  id: string;
-  action: string;
-  targetUserId: string;
-  targetUserName: string;
-  performedBy: string;
-  details?: string;
-  timestamp: string;
-}
+const SALT_ROUNDS = 10;
 
 const DEFAULT_USERS: ServerUser[] = [
   {
@@ -155,66 +132,32 @@ const DEFAULT_AUDIT_LOGS: UserAuditLog[] = [
   }
 ];
 
-function loadUsers(): ServerUser[] {
-  try {
-    if (fs.existsSync(USERS_FILE)) {
-      const raw = fs.readFileSync(USERS_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Ensure default admin accounts exist
-        const hasYusuf = parsed.some((u: ServerUser) => u.email.toLowerCase() === 'yusufwisnubrata26@gmail.com');
-        if (!hasYusuf) {
-          parsed.unshift(DEFAULT_USERS[0]);
-          saveUsers(parsed);
-        }
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.error('Error reading users file:', err);
-  }
-  saveUsers(DEFAULT_USERS);
-  return DEFAULT_USERS;
-}
-
-function saveUsers(users: ServerUser[]) {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving users file:', err);
-  }
-}
-
-function loadAuditLogs(): UserAuditLog[] {
-  try {
-    if (fs.existsSync(LOGS_FILE)) {
-      const raw = fs.readFileSync(LOGS_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (err) {
-    console.error('Error reading audit logs file:', err);
-  }
-  saveAuditLogs(DEFAULT_AUDIT_LOGS);
-  return DEFAULT_AUDIT_LOGS;
-}
-
-function saveAuditLogs(logs: UserAuditLog[]) {
-  try {
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving audit logs file:', err);
-  }
-}
-
 function sanitizeUser(u: ServerUser) {
   const { password, ...safe } = u;
   return safe;
 }
 
-let usersCache: ServerUser[] = loadUsers();
-let auditLogsCache: UserAuditLog[] = loadAuditLogs();
+function getTodayString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
+// In-memory caches — hydrated from Supabase in hydrateCaches() before the server listens.
+let usersCache: ServerUser[] = [];
+let auditLogsCache: UserAuditLog[] = [];
+let statsCache: VisitorStats = {
+  totalVisits: 0,
+  uniqueVisitorIds: [],
+  todayDate: getTodayString(),
+  todayVisits: 0,
+  lastUpdated: new Date().toISOString(),
+};
+
+// Write-through: persist the full user set to Supabase (fire-and-forget).
+function saveUsers(users: ServerUser[]) {
+  upsertUsers(users).catch(err => console.error('Error saving users to Supabase:', err));
+}
+
+// Persist a single audit log to Supabase (fire-and-forget).
 function addAuditLog(action: string, targetUserId: string, targetUserName: string, performedBy: string, details?: string) {
   const logItem: UserAuditLog = {
     id: 'log-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -227,54 +170,60 @@ function addAuditLog(action: string, targetUserId: string, targetUserName: strin
   };
   auditLogsCache.unshift(logItem);
   if (auditLogsCache.length > 200) auditLogsCache = auditLogsCache.slice(0, 200);
-  saveAuditLogs(auditLogsCache);
+  insertAuditLog(logItem).catch(err => console.error('Error saving audit log to Supabase:', err));
 }
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  } catch (err) {
-    console.error('Failed to create data directory:', err);
-  }
-}
-
-function getTodayString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function loadStats(): VisitorStats {
-  try {
-    if (fs.existsSync(STATS_FILE)) {
-      const data = fs.readFileSync(STATS_FILE, 'utf-8');
-      const parsed = JSON.parse(data);
-      const today = getTodayString();
-      if (parsed.todayDate !== today) {
-        parsed.todayDate = today;
-        parsed.todayVisits = 0;
-      }
-      return parsed;
-    }
-  } catch (err) {
-    console.error('Error reading stats file:', err);
-  }
-  return {
-    totalVisits: 0,
-    uniqueVisitorIds: [],
-    todayDate: getTodayString(),
-    todayVisits: 0,
-    lastUpdated: new Date().toISOString(),
-  };
-}
-
-let statsCache: VisitorStats = loadStats();
 
 function saveStats() {
-  try {
-    statsCache.lastUpdated = new Date().toISOString();
-    fs.writeFileSync(STATS_FILE, JSON.stringify(statsCache, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error saving stats file:', err);
+  statsCache.lastUpdated = new Date().toISOString();
+  upsertStats(statsCache).catch(err => console.error('Error saving stats to Supabase:', err));
+}
+
+// Load all data from Supabase into the in-memory caches. Seeds defaults if empty.
+async function hydrateCaches() {
+  // Users — seed defaults (with hashed passwords) if the table is empty.
+  let users = await fetchUsers();
+  if (users.length === 0) {
+    users = await Promise.all(
+      DEFAULT_USERS.map(async u => ({ ...u, password: await bcrypt.hash(u.password, SALT_ROUNDS) }))
+    );
+    await upsertUsers(users);
+  } else {
+    // Ensure the primary super admin always exists.
+    const hasYusuf = users.some(u => u.email.toLowerCase() === 'yusufwisnubrata26@gmail.com');
+    if (!hasYusuf) {
+      const yusuf: ServerUser = {
+        ...DEFAULT_USERS[0],
+        password: await bcrypt.hash(DEFAULT_USERS[0].password, SALT_ROUNDS),
+      };
+      await upsertUsers([yusuf]);
+      users.unshift(yusuf);
+    }
+  }
+  usersCache = users;
+
+  auditLogsCache = await fetchAuditLogs(200);
+  if (auditLogsCache.length === 0) {
+    await insertAuditLogs(DEFAULT_AUDIT_LOGS);
+    auditLogsCache = [...DEFAULT_AUDIT_LOGS];
+  }
+
+  const stats = await fetchStats();
+  const today = getTodayString();
+  if (stats) {
+    if (stats.todayDate !== today) {
+      stats.todayDate = today;
+      stats.todayVisits = 0;
+    }
+    statsCache = stats;
+  } else {
+    statsCache = {
+      totalVisits: 0,
+      uniqueVisitorIds: [],
+      todayDate: today,
+      todayVisits: 0,
+      lastUpdated: new Date().toISOString(),
+    };
+    await upsertStats(statsCache);
   }
 }
 
@@ -294,7 +243,10 @@ setInterval(() => {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
+
+  // Load all persisted data from Supabase before accepting requests.
+  await hydrateCaches();
 
   app.use(express.json());
 
@@ -393,7 +345,7 @@ async function startServer() {
   // =================== AUTHENTICATION & USER MANAGEMENT API ===================
 
   // 1. User Login
-  app.post('/api/auth/login', (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email dan password wajib diisi.' });
@@ -402,7 +354,7 @@ async function startServer() {
     const cleanEmail = String(email).trim().toLowerCase();
     const user = usersCache.find(u => u.email.toLowerCase() === cleanEmail);
 
-    if (!user || user.password !== String(password)) {
+    if (!user || !(await bcrypt.compare(String(password), user.password))) {
       return res.status(401).json({
         success: false,
         message: 'Kombinasi email atau password salah. Silakan periksa kembali.'
@@ -447,7 +399,7 @@ async function startServer() {
   });
 
   // 2. User Self-Registration
-  app.post('/api/auth/register', (req, res) => {
+  app.post('/api/auth/register', async (req, res) => {
     const { name, email, password, phone, kloterOrAgency, role } = req.body || {};
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Nama, email, dan password wajib diisi.' });
@@ -463,7 +415,7 @@ async function startServer() {
       id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       name: String(name).trim(),
       email: cleanEmail,
-      password: String(password),
+      password: await bcrypt.hash(String(password), SALT_ROUNDS),
       role: (role === 'admin' || role === 'jamaah') ? role : 'jamaah',
       status: 'pending', // Self-registered accounts require Super Admin approval!
       phone: phone ? String(phone).trim() : undefined,
@@ -498,7 +450,7 @@ async function startServer() {
   });
 
   // 4. Create User Directly (by Super Admin)
-  app.post('/api/users', (req, res) => {
+  app.post('/api/users', async (req, res) => {
     const { name, email, password, role, status, phone, kloterOrAgency, notes, performedBy } = req.body || {};
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Nama, email, dan password wajib diisi.' });
@@ -513,7 +465,7 @@ async function startServer() {
       id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       name: String(name).trim(),
       email: cleanEmail,
-      password: String(password),
+      password: await bcrypt.hash(String(password), SALT_ROUNDS),
       role: role || 'jamaah',
       status: status || 'approved',
       phone: phone ? String(phone).trim() : undefined,
@@ -665,7 +617,7 @@ async function startServer() {
     }
 
     usersCache.splice(index, 1);
-    saveUsers(usersCache);
+    deleteUserById(id).catch(err => console.error('Error deleting user from Supabase:', err));
 
     addAuditLog('USER_DELETED', id, user.name, performedBy || 'Super Admin', `Menghapus akun pengguna (${user.email})`);
 
@@ -703,4 +655,7 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error('Gagal memulai server:', err);
+  process.exit(1);
+});

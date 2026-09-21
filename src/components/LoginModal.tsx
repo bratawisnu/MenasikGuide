@@ -12,8 +12,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Sparkles,
-  ArrowRight,
   ShieldCheck,
   KeyRound
 } from 'lucide-react';
@@ -131,32 +129,6 @@ export const LoginModal: React.FC = () => {
     }
   };
 
-  // Quick Demo Login Helper
-  const handleQuickDemoLogin = async (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMessage(null);
-    setStatusNotice(null);
-    const res = await login(demoEmail, demoPass);
-    if (!res.success) {
-      if (res.status === 'suspended') {
-        setStatusNotice({
-          type: 'suspended',
-          message: 'Akun Demo Ini Berstatus SUSPENDED',
-          details: res.suspendReason || 'Akun dinonaktifkan sementara untuk pengujian.'
-        });
-      } else if (res.status === 'pending') {
-        setStatusNotice({
-          type: 'pending',
-          message: 'Akun Demo Ini Berstatus PENDING APPROVAL',
-          details: 'Menunggu persetujuan Super Admin. Silakan login sebagai Super Admin untuk menyetujui akun ini.'
-        });
-      } else {
-        setErrorMessage(res.message || 'Login gagal.');
-      }
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-950/75 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg bg-white dark:bg-stone-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden my-8">
@@ -255,7 +227,7 @@ export const LoginModal: React.FC = () => {
                     {statusNotice.details}
                   </p>
                   <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-400 mt-2">
-                    ⚡ Petunjuk: Anda dapat login sebagai <strong>Super Admin</strong> menggunakan tombol 1-Klik di bawah untuk menyetujui akun ini.
+                    ⚡ Petunjuk: Login sebagai <strong>Super Admin</strong> untuk menyetujui akun ini.
                   </p>
                 </div>
               </div>
@@ -462,155 +434,6 @@ export const LoginModal: React.FC = () => {
               </button>
             </form>
           )}
-
-          {/* QUICK 1-CLICK DEMO ACCOUNTS (Crucial for convenient testing) */}
-          <div className="mt-6 pt-5 border-t border-stone-200 dark:border-stone-800">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-bold text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                Uji Coba Cepat (Akun Demo 1-Klik):
-              </span>
-              <span className="text-[10px] text-stone-400">Klik langsung untuk masuk</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {/* 1. Super Admin Utama (Yusuf Wisnubrata) */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('yusufwisnubrata26@gmail.com', 'admin123')}
-                className="text-left p-2.5 rounded-xl border-2 border-emerald-500 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-1">
-                    👑 Yusuf Wisnubrata
-                  </span>
-                  <span className="text-[10px] font-bold bg-emerald-200 dark:bg-emerald-800 text-emerald-950 dark:text-emerald-100 px-1.5 py-0.5 rounded">
-                    Super Admin
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-700 dark:text-stone-300 font-medium truncate mt-0.5">
-                  yusufwisnubrata26@gmail.com
-                </div>
-                <div className="text-[10px] text-emerald-700 dark:text-emerald-300 group-hover:underline flex items-center gap-1 mt-1 font-semibold">
-                  <span>Akses Super Admin Pemilik</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </div>
-              </button>
-
-              {/* 2. Super Admin Demo (KH. Abdullah Syukri) */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('superadmin@manasik.id', 'admin123')}
-                className="text-left p-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                    👑 KH. Abdullah Syukri
-                  </span>
-                  <span className="text-[10px] font-bold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded">
-                    Super Admin
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
-                  superadmin@manasik.id
-                </div>
-                <div className="text-[10px] text-stone-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex items-center gap-1 mt-1 font-medium">
-                  <span>Kelola User, Approval & Suspend</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </div>
-              </button>
-
-              {/* 3. Pembimbing / Admin Demo */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('ustadz@manasik.id', 'ustadz123')}
-                className="text-left p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1">
-                    👳 Ustadz Hilman Fawzi
-                  </span>
-                  <span className="text-[10px] font-bold bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded">
-                    Admin
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-600 dark:text-stone-400 truncate mt-0.5">
-                  ustadz@manasik.id
-                </div>
-                <div className="text-[10px] text-stone-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex items-center gap-1 mt-1 font-medium">
-                  <span>Akses Panduan, Presentasi & CMS</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </div>
-              </button>
-
-              {/* 4. Jamaah Aktif (Hj. Siti Aminah) */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('siti.aminah@gmail.com', 'jamaah123')}
-                className="text-left p-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/60 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1">
-                    🧕 Hj. Siti Aminah
-                  </span>
-                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                    Jamaah Aktif
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-500 truncate mt-0.5">
-                  siti.aminah@gmail.com
-                </div>
-                <div className="text-[10px] text-stone-400 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex items-center gap-1 mt-1 font-medium">
-                  <span>Akses Materi & Panduan Manasik</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </div>
-              </button>
-
-              {/* 5. Pending Account Test Demo */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('hendra.kusuma@gmail.com', 'jamaah123')}
-                className="text-left p-2.5 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-stone-50 dark:bg-stone-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
-                    ⏳ Tes Akun Pending
-                  </span>
-                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
-                    Butuh Approval
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-500 truncate mt-0.5">
-                  hendra.kusuma@gmail.com
-                </div>
-                <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                  Uji notifikasi status menunggu approval
-                </div>
-              </button>
-
-              {/* 6. Suspended Account Test Demo */}
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('farhan.suspended@gmail.com', 'jamaah123')}
-                className="text-left p-2.5 rounded-xl border border-dashed border-rose-300 dark:border-rose-700 bg-stone-50 dark:bg-stone-800/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all group"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1">
-                    🚫 Tes Akun Suspended
-                  </span>
-                  <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded">
-                    Tersuspend
-                  </span>
-                </div>
-                <div className="text-[11px] text-stone-500 truncate mt-0.5">
-                  farhan.suspended@gmail.com
-                </div>
-                <div className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 font-medium">
-                  Uji penolakan login akun disuspend
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

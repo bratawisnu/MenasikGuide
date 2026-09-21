@@ -115,26 +115,27 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
 
           {/* Right Side Tools: Visitor Counter, Notifications, Auth/Login */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Live Visitor Counter Pill */}
-            <div className="relative">
-              <button
-                onClick={() => setShowVisitorModal(!showVisitorModal)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700 transition-all text-stone-700 dark:text-stone-200 text-xs font-semibold cursor-pointer"
-                title="Jumlah Pengunjung & Jamaah Online"
-                aria-label="Statistik Kunjungan Jamaah"
-              >
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="font-bold text-emerald-800 dark:text-emerald-400">
-                  {visitorStats.activeNow || 1} Online
-                </span>
-                <span className="flex items-center gap-1 text-stone-500 dark:text-stone-400">
-                  <Users className="w-3.5 h-3.5" />
-                  <span>{visitorStats.uniqueVisitors || 1}</span>
-                </span>
-              </button>
+            {/* Live Visitor Counter Pill - Only visible for Admin & Super Admin */}
+            {(isSuperAdmin || isAdmin) && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowVisitorModal(!showVisitorModal)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700/80 border border-stone-200 dark:border-stone-700 transition-all text-stone-700 dark:text-stone-200 text-xs font-semibold cursor-pointer"
+                  title="Jumlah Pengunjung & Jamaah Online"
+                  aria-label="Statistik Kunjungan Jamaah"
+                >
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-bold text-emerald-800 dark:text-emerald-400">
+                    {visitorStats.activeNow || 1} Online
+                  </span>
+                  <span className="flex items-center gap-1 text-stone-500 dark:text-stone-400">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{visitorStats.uniqueVisitors || 1}</span>
+                  </span>
+                </button>
 
               {/* Visitor Stats Popover Modal */}
               {showVisitorModal && (
@@ -209,6 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
                 </div>
               )}
             </div>
+            )}
 
             {/* Notification Bell */}
             <div className="relative">
@@ -297,8 +299,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView }) =
                         {currentUser.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="text-left hidden md:block">
-                        <div className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate max-w-[120px]">
-                          {currentUser.name.split(' ')[0]}
+                        <div className="text-xs font-bold text-stone-900 dark:text-stone-100 whitespace-nowrap">
+                          {(() => {
+                            const words = currentUser.name.trim().split(/\s+/);
+                            return words.slice(0, 2).join(' ') + (words.length > 2 ? '…' : '');
+                          })()}
                         </div>
                         <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                           {currentUser.role === 'super_admin' ? '👑 Super Admin' : currentUser.role === 'admin' ? '👳 Pembimbing' : '🧕 Jamaah'}

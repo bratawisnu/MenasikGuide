@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Editor / local tooling
+.idea/
+.claude/
+
+# Runtime data (legacy JSON store — sumber data sekarang Supabase, berisi info sensitif)
+data/*.json
